@@ -5,13 +5,10 @@ SerWise is a prototype virtual work simulation platform with the goal of improvi
 
 ### Current primary features of the project:
 
-- Voice-based AI conversations
-- Scenario-guided prompting
+- Voice-based immersive AI conversations
+- Adaptive simulation difficulty
 - AI-generated feedback after each simulation
 - Progress tracking for soft skill development
-- Adaptive simulation difficulty
-
-
 
 ## How to use:
 
