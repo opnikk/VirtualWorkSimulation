@@ -9,6 +9,7 @@ SerWise is a prototype virtual work simulation platform with the goal of improvi
 - Scenario-guided prompting
 - AI-generated feedback after each simulation
 - Progress tracking for soft skill development
+- Adaptive simulation difficulty
 
 
 
