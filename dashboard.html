@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard</title>
+
+<link rel="stylesheet" href="style.css">
+
+
+<strong><link rel="preconnect" href="https://fonts.googleapis.com"></strong>
+<strong><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"></strong>
+
+</head>
+
+<body>
+
+<nav> 
+    <h2 class="dashboard_title">Training Dashboard</h2>
+    <div id="userInfo"></div>
+</nav>
+
+<div class="dashboard">
+
+<h1>Choose a Training Exercise</h1>
+
+<div class="cards">
+
+<div class="card">
+<h3>Customer Service Exercise</h3>
+<p>Practice responding to customer questions and complaints.</p>
+<button onclick="location.href='customer-service.html'">
+Start Exercise
+</button>
+</div>
+
+<div class="card">
+<h3>Sales Exercise</h3>
+<p>Practice convincing customers and closing sales.</p>
+<button onclick="alert('Coming soon!')">
+Start Exercise
+</button>
+</div>
+
+</div>
+
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+
+        const username = localStorage.getItem("username");
+        const userInfo = document.getElementById("userInfo");
+
+        if (username) {
+            userInfo.innerHTML = `
+            <user_button href="#" onclick="location.href='user.html'">
+            ${username}
+        </user_button>
+            <logout_button onclick="logout()">Logout</button>
+        `;
+        } else {
+            userInfo.innerHTML = `
+            <logout_button onclick="location.href='index.html'">
+                Login / Register
+            </logout_button>
+        `;
+        }
+    });
+</script>
+<script>
+    function logout() {
+        localStorage.removeItem("username");
+        showToast("Logged out successfully");
+        setTimeout(() => {
+            window.location.href = "index.html";
+        }, 800);
+    }
+</script>
+<script>
+    function showToast(message) {
+        const toast = document.getElementById("toast");
+
+        toast.innerText = message;
+        toast.classList.add("show");
+
+        setTimeout(() => {
+            toast.classList.remove("show");
+        }, 2500);
+    }
+</script>
+</body>
+</html>

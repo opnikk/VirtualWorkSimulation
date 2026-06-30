@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <title>Simulation</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono&display=swap" rel="stylesheet">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Anta&display=swap" rel="stylesheet">
+
+
+</head>
+
+<body class="home">
+
+<div class="hero">
+
+    <p class="smallText">VIRTUAL WORK SIMULATION</p>
+    
+<h1 class="main-title anta-regular">
+    <span class="left-text">Ser</span><span class="right-text">Wise</span>
+</h1>
+
+    <h2 id="authTitle" style="display:none;">Login</h2>
+
+    <input id="authUsername" placeholder="Username" style="display:none;">
+    <input id="authEmail" placeholder="Email">
+    <input id="authPassword" type="password" placeholder="Password">
+
+    <button id="authButton" onclick="authAction()">Login</button>
+
+
+    <p id="toggleText">
+        Don't have an account?
+        <a href="#" onclick="toggleAuth()">Register</a>
+    </p>
+
+
+</div>
+
+
+
+<br>
+    <p>
+        Want to explore first?
+        <a href="#" onclick="location.href='dashboard.html'">
+            Try demo mode →
+        </a>
+    </p>
+
+
+</div>
+<div id="toast" class="toast"></div>
+
+<script src="index.js"></script>
+        </div>
+
+        </body>
+        </html>

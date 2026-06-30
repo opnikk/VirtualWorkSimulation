@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+
+<style>
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+#vis-wrap{display:flex;flex-direction:column;align-items:center;gap:20px;padding:24px 0;flex: 1;}  
+#canvas-container{width:100%;max-width:780px;background:#0a0d12;border-radius:12px;overflow:hidden;position:relative;margin-top: 35px;}
+
+canvas{display:block;width:100%;height:180px}
+#status{font-size:12px;color:var(--color-text-secondary);text-align:center;min-height:16px}
+.mode-label{font-size:11px;color:var(--color-text-tertiary);text-align:center}
+
+#controls{display:none !important;flex-direction:column;align-items:center;gap:20px;padding:24px 0}
+#status{display:none !important;}
+
+</style>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Customer Service Simulation</title>
+<link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+<nav>
+<a href="dashboard.html">⬅ Back to Dashboard</a> 
+</nav> 
+
+<div class="simulation">
+
+    <div class="difficultyUI">
+        <div class="buttons">
+            <button onclick="startScenario()">
+                Start Simulation
+            </button>
+        </div>
+    </div>
+
+<h3 id="scenarioTitle" class="scenarioTitle"></h3>
+
+<div class="container">
+
+    <div id="chatBox" class="chatBox">
+        <div class="message system intro-message"></div>
+    </div>
+
+    <div id="vis-wrap">
+      <div id="canvas-container">
+        <canvas id="vis" height="160"></canvas>
+      </div>
+      <div id="controls">
+        <button id="btn-mic"><i class="ti ti-microphone" aria-hidden="true"></i> Microphone</button>
+        <button id="btn-stop"><i class="ti ti-player-stop" aria-hidden="true"></i> Stop</button>
+      </div>
+      <div id="status"> </div>
+    </div>
+
+    <div id="infoBox" class="infoBox">
+        <div class="message system intro-message">
+        INSTRUCTIONS
+        <br>- Allow microphone input.
+        <br>- The difficulty will be based on your previous performance.
+        <br>- Begin by greeting the customer when the connection is formed.
+        <br>- Try to resolve the customer's issue professionally.
+        <br>- End the scenario whenever by pressing the red button below.
+        </div>
+    </div>
+
+</div>
+  
+<div style="display: flex; justify-content: center; margin-top: 20px;">
+    <button onclick="finishScenario()">End Scenario</button>
+</div>
+
+<script src="customer-service.js"></script>
+
+</body>
+
+<!-- VISUALIZER CODE -->
+
+<script>
+
+const canvas = document.getElementById('vis');
+const ctx = canvas.getContext('2d');
+resize();
+const status = document.getElementById('status');
+let audioCtx, analyser, source, animId, demoAnimId;
+let isRunning = false;
+let connectedSource = null;
+
+const barsPerSide = 32;
+const currentHeights = new Array(barsPerSide).fill(0);
+
+// Higher = faster, Lower = slower
+const fallDownFactor = 0.9;
+
+function resize(){
+    console.log('Canvas offsetWidth:', canvas.offsetWidth);
+    canvas.width = canvas.offsetWidth * (window.devicePixelRatio||1);
+    canvas.height = canvas.offsetHeight * (window.devicePixelRatio||1);
+}
+
+window.addEventListener('resize', resize);
+
+
+
+async function connectStream(stream) {
+    // Create/reuse AudioContext
+    if (!audioCtx) {
+        audioCtx = new AudioContext();
+    }
+
+    // Resume if suspended
+    if (audioCtx.state === "suspended") {
+        await audioCtx.resume();
+    }
+
+    // Clean previous source
+    if (connectedSource) {
+        connectedSource.disconnect();
+    }
+
+    // Create analyser
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.6;
+
+    // Connect stream
+    connectedSource = audioCtx.createMediaStreamSource(stream);
+    connectedSource.connect(analyser);
+
+    isRunning = true;
+    loop();
+
+    status.textContent = "Visualizer connected";
+}
+
+function drawIdle(){
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#0a0d12';
+  ctx.fillRect(0,0,W,H);
+  const cx = W/2, cy = H/2;
+  ctx.strokeStyle = 'rgba(45,212,191,0.18)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for(let x=0;x<=W;x+=2){
+    const t = x/W;
+    const y = cy + Math.sin(t*Math.PI*6)*4;
+    x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+}
+//drawIdle(); SHIT
+
+// Visualizer bars
+
+function drawBars(dataArr) {
+  const W = canvas.width;
+  const H = canvas.height;
+
+  ctx.fillStyle = '#0a0d12';
+  ctx.fillRect(0, 0, W, H);
+
+  const cx = W / 2;
+  const spacing = 5;
+  const barWidth = 8;
+  const dpr = window.devicePixelRatio || 1;
+
+  for (let i = 0; i < barsPerSide; i++) {
+    // 1. Get the raw audio target value (0.0 to 1.0)
+    const targetVal = dataArr[Math.floor(i * dataArr.length / barsPerSide)] / 255;
+
+    // 2. Apply the snap-back
+    if (currentHeights[i] === undefined) currentHeights[i] = 0;
+
+    if (targetVal > currentHeights[i]) {
+      // If the audio spikes, jump up immediately to catch the beat
+      currentHeights[i] = targetVal;
+    } else {
+      // If the audio drops, damp the fall-back naturally over time
+      // Linear interpolation or multiplication creates an organic decay curve
+      currentHeights[i] -= (currentHeights[i] - targetVal) * (1 - fallDownFactor);
+    }
+
+    // Use our smoothed history value for the rest of the calculations
+    const val = currentHeights[i];
+
+    // 3. Base height calculation using the smoothed value
+    const baseBh = val * H * 0.85;
+
+    // Stable pseudo-random factors for asymmetry
+    const leftRand = 0.85 + (Math.sin(i * 1.5) + 1) * 0.15;   
+    const rightRand = 0.85 + (Math.cos(i * 2.5) + 1) * 0.15;  
+
+    const hue = 160 + val * 40;
+    const light = 45 + val * 25;
+    const alpha = 0.5 + val * 0.5;
+
+    ctx.shadowBlur = 18 * dpr * val;
+    ctx.shadowColor = `hsla(${hue},90%,65%,0.9)`;
+    
+    const offset = i * (barWidth + spacing);
+
+    // --- RIGHT SIDE ---
+    let bhRight = baseBh * rightRand;
+    let yRight = (H - bhRight) / 2;
+    let xRight = cx + offset;
+
+    let gradR = ctx.createLinearGradient(xRight, yRight, xRight, yRight + bhRight);
+    gradR.addColorStop(0, `hsla(${hue},90%,${light + 15}%,${alpha})`);
+    gradR.addColorStop(0.5, `hsla(${hue},85%,${light}%,${alpha})`);
+    gradR.addColorStop(1, `hsla(${hue},90%,${light + 15}%,${alpha})`);
+
+    ctx.fillStyle = gradR;
+    ctx.beginPath();
+    ctx.roundRect(xRight, yRight, barWidth, bhRight, 2);
+    ctx.fill();
+
+    // --- LEFT SIDE ---
+    let bhLeft = baseBh * leftRand;
+    let yLeft = (H - bhLeft) / 2;
+    let xLeft = cx - offset - barWidth;
+
+    let gradL = ctx.createLinearGradient(xLeft, yLeft, xLeft, yLeft + bhLeft);
+    gradL.addColorStop(0, `hsla(${hue},90%,${light + 15}%,${alpha})`);
+    gradL.addColorStop(0.5, `hsla(${hue},85%,${light}%,${alpha})`);
+    gradL.addColorStop(1, `hsla(${hue},90%,${light + 15}%,${alpha})`);
+
+    ctx.fillStyle = gradL;
+    ctx.beginPath();
+    ctx.roundRect(xLeft, yLeft, barWidth, bhLeft, 2);
+    ctx.fill();
+  }
+
+  ctx.shadowBlur = 0;
+}
+
+// Visualizer waveform
+
+function drawWaveform(dataArr) {
+  const W = canvas.width;
+  const H = canvas.height;
+  const midY = H / 2;
+
+  // Clear background
+  ctx.fillStyle = '#0a0d12';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!dataArr || dataArr.length === 0) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const sliceW = W / (dataArr.length - 1);
+  const path = new Path2D();
+  
+  for (let i = 0; i < dataArr.length; i++) {
+    const normalized = (dataArr[i] - 128) / 128;
+    
+    const y = midY + (normalized * midY * 0.8);
+    const x = i * sliceW;
+
+    if (i === 0) {
+      path.moveTo(x, y);
+    } else {
+      path.lineTo(x, y);
+    }
+  }
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Outer wide glow
+  ctx.strokeStyle = 'rgba(45, 212, 191, 0.15)';
+  ctx.lineWidth = 12 * dpr;
+  ctx.stroke(path);
+
+  // Inner tight glow
+  ctx.strokeStyle = 'rgba(45, 212, 191, 0.4)';
+  ctx.lineWidth = 6 * dpr;
+  ctx.stroke(path);
+
+  // Core bright line
+  ctx.strokeStyle = '#2dd4bf';
+  ctx.lineWidth = 2 * dpr;
+  ctx.stroke(path);
+}
+
+let vizMode = 'bars';
+function loop(){
+  if(!analyser || !isRunning){return;}
+  animId = requestAnimationFrame(loop);
+  if(vizMode==='bars'){
+    const arr = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(arr);
+    drawBars(arr);
+  } else {
+    const arr = new Uint8Array(analyser.fftSize);
+    analyser.getByteTimeDomainData(arr);
+    drawWaveform(arr);
+  }
+}
+
+async function startMic(){
+  stopAll();
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    audioCtx = new AudioContext();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.82;
+    source = audioCtx.createMediaStreamSource(stream);
+    source.connect(analyser);
+    isRunning = true;
+    status.textContent = 'Listening to microphone...';
+    document.getElementById('btn-mic').classList.add('active');
+    loop();
+  } catch(e){
+    status.textContent = 'Microphone access denied or unavailable.';
+  }
+}
+
+
+function stopAll(){
+  isRunning = false;
+  if(animId) cancelAnimationFrame(animId);
+  if(audioCtx){audioCtx.close();audioCtx=null;}
+  document.getElementById('btn-mic').classList.remove('active');
+  status.textContent = 'Stopped.';
+  drawIdle();
+}
+
+document.getElementById('btn-mic').addEventListener('click', startMic);
+document.getElementById('btn-stop').addEventListener('click', stopAll);
+
+window.connectAudioElement = function(audioEl){
+
+  stopAll();
+  try{
+    audioCtx = new AudioContext();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.82;
+    source = audioCtx.createMediaElementSource(audioEl);
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    isRunning = true;
+    loop();
+  } catch(e){
+    status.textContent = 'Could not connect audio element: '+e.message;
+  }
+};
+
+</script>
+
+<!-- TEMP VISUALIZER TEST PANEL
+<div id="test-panel" style="padding:16px; border:1px dashed #444; border-radius:8px; max-width:480px;">
+  <p style="font-size:13px; margin:0 0 8px;"> </p>
+  <input type="file" id="audio-file-input" accept="audio/*">
+  <audio id="test-audio" controls style="width:100%; margin-top:8px;"></audio>
+</div>
+
+<script>
+  document.getElementById('audio-file-input').addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+    document.getElementById('test-audio').src = URL.createObjectURL(file);
+    connectAudioElement(document.getElementById('test-audio'));
+  });
+</script> 
+
+-->
+
+</html>
