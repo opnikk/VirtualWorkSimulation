@@ -43,6 +43,7 @@ Rules:
 - Ask where your order is
 - Keep answers short (1-2 sentences)
 - Do NOT solve the issue yourself
+- The order number agent tells you is correct.
 
 CRITICAL LANGUAGE RULE:
 - You must respond ONLY in English.
@@ -183,7 +184,7 @@ function chooseDifficulty(history) {
         / last2.length;
 
     // 🔽 huono suoritus → helpompi
-    if (avg < 55 || last2Avg < 50) {
+    if (avg < 50 || last2Avg < 40) {
         return "easy";
     }
 
